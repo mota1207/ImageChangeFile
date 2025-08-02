@@ -11,7 +11,14 @@ from tkinter import ttk, filedialog, messagebox
 from tkinter.scrolledtext import ScrolledText
 import threading
 from pathlib import Path
+import tempfile
+import shutil
 from image_converter import ImageConverter
+try:
+    from tkinterdnd2 import DND_FILES, TkinterDnD
+    DND_AVAILABLE = True
+except ImportError:
+    DND_AVAILABLE = False
 
 
 class ImageConverterGUI:
@@ -32,6 +39,9 @@ class ImageConverterGUI:
         
         self.converter = ImageConverter()
         self.setup_ui()
+        
+        # ドラッグ&ドロップの設定
+        self.setup_drag_drop()
         
     def setup_ui(self):
         """UIセットアップ"""
@@ -71,6 +81,15 @@ class ImageConverterGUI:
         self.input_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
         self.input_button = ttk.Button(input_frame, text="参照", command=self.browse_input)
         self.input_button.grid(row=0, column=2)
+        
+        # ドラッグ&ドロップエリア
+        self.drop_frame = ttk.LabelFrame(input_frame, text="ドラッグ&ドロップエリア", padding="10")
+        self.drop_frame.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(10, 0))
+        
+        self.drop_label = ttk.Label(self.drop_frame, text="ここに画像ファイルをドラッグ&ドロップしてください", 
+                                  foreground="gray", anchor="center")
+        self.drop_label.grid(row=0, column=0, sticky=(tk.W, tk.E))
+        self.drop_frame.columnconfigure(0, weight=1)
         
         # 出力設定
         output_frame = ttk.LabelFrame(main_frame, text="出力設定", padding="10")
@@ -288,11 +307,95 @@ class ImageConverterGUI:
         """変換完了時の処理"""
         self.progress_bar.stop()
         self.convert_button.config(state="normal")
+        
+    def setup_drag_drop(self):
+        """ドラッグ&ドロップの設定"""
+        if not DND_AVAILABLE:
+            self.drop_label.config(text="ドラッグ&ドロップ機能は利用できません (tkinterdnd2が必要)")
+            return
+            
+        # ドロップエリアの設定
+        self.drop_frame.drop_target_register(DND_FILES)
+        self.drop_frame.dnd_bind('<<DropEnter>>', self.on_drop_enter)
+        self.drop_frame.dnd_bind('<<DropLeave>>', self.on_drop_leave)
+        self.drop_frame.dnd_bind('<<Drop>>', self.on_drop)
+        
+        self.drop_label.drop_target_register(DND_FILES)
+        self.drop_label.dnd_bind('<<DropEnter>>', self.on_drop_enter)
+        self.drop_label.dnd_bind('<<DropLeave>>', self.on_drop_leave)
+        self.drop_label.dnd_bind('<<Drop>>', self.on_drop)
+        
+    def on_drop_enter(self, event):
+        """ドラッグエンター時の処理"""
+        self.drop_label.config(text="ファイルをドロップしてください", foreground="blue")
+        self.drop_frame.config(relief="ridge", borderwidth=2)
+        
+    def on_drop_leave(self, event):
+        """ドラッグリーブ時の処理"""
+        self.drop_label.config(text="ここに画像ファイルをドラッグ&ドロップしてください", foreground="gray")
+        self.drop_frame.config(relief="groove", borderwidth=1)
+        
+    def on_drop(self, event):
+        """ドロップ時の処理"""
+        self.drop_label.config(text="ここに画像ファイルをドラッグ&ドロップしてください", foreground="gray")
+        self.drop_frame.config(relief="groove", borderwidth=1)
+        
+        # ドロップされたファイルを取得
+        files = self.root.tk.splitlist(event.data)
+        if not files:
+            return
+            
+        # 画像ファイルのみをフィルタリング
+        image_files = []
+        for file_path in files:
+            if self.converter.is_supported_format(file_path):
+                image_files.append(file_path)
+        
+        if not image_files:
+            messagebox.showwarning("警告", "サポートされている画像ファイルが見つかりませんでした。")
+            return
+            
+        if self.mode_var.get() == "single":
+            # 単一ファイルモード：最初のファイルを使用
+            self.input_var.set(image_files[0])
+            if len(image_files) > 1:
+                messagebox.showinfo("情報", f"単一ファイルモードのため、{len(image_files)}個のファイルの中から最初のファイルを選択しました。")
+        else:
+            # バッチモード：複数ファイルを処理
+            if len(image_files) == 1:
+                # 単一ファイルの場合、そのファイルのディレクトリを設定
+                file_dir = os.path.dirname(image_files[0])
+                self.input_var.set(file_dir)
+            else:
+                # 複数ファイルの場合、一時ディレクトリを作成してファイルをコピー
+                self.handle_multiple_files_drop(image_files)
+                
+    def handle_multiple_files_drop(self, image_files):
+        """複数ファイルドロップ時の処理"""
+        try:
+            # 一時ディレクトリを作成
+            temp_dir = tempfile.mkdtemp(prefix="image_converter_")
+            
+            # ファイルを一時ディレクトリにコピー
+            for file_path in image_files:
+                filename = os.path.basename(file_path)
+                dest_path = os.path.join(temp_dir, filename)
+                shutil.copy2(file_path, dest_path)
+            
+            self.input_var.set(temp_dir)
+            messagebox.showinfo("情報", f"{len(image_files)}個のファイルが一時ディレクトリに準備されました。\nパス: {temp_dir}")
+            
+        except Exception as e:
+            messagebox.showerror("エラー", f"ファイルの準備中にエラーが発生しました: {str(e)}")
 
 
 def main():
     """GUI版メイン関数"""
-    root = tk.Tk()
+    if DND_AVAILABLE:
+        root = TkinterDnD.Tk()
+    else:
+        root = tk.Tk()
+        
     app = ImageConverterGUI(root)
     
     # ウィンドウを画面中央に配置

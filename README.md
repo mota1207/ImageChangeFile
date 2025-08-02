@@ -11,6 +11,7 @@ Windows用Python画像変換ツール
 - **多形式対応**: JPEG, PNG, BMP, GIF, TIFF, WebP
 - **単一ファイル変換**: 1つのファイルを指定形式に変換
 - **バッチ変換**: フォルダ内の全画像を一括変換
+- **ドラッグ&ドロップ**: 画像ファイルを直接ドラッグ&ドロップで変換
 - **リサイズ機能**: 変換時に画像サイズを変更
 - **品質調整**: JPEG/WebP形式の圧縮品質を調整
 - **EXIF対応**: 回転情報に基づく自動補正
@@ -21,6 +22,7 @@ Windows用Python画像変換ツール
 - Windows 7/8/10/11
 - Python 3.7以上
 - Pillow ライブラリ
+- tkinterdnd2 ライブラリ（ドラッグ&ドロップ機能用）
 
 ## インストール
 
@@ -34,7 +36,7 @@ pip install -r requirements.txt
 
 または
 ```bash
-pip install Pillow
+pip install Pillow tkinterdnd2
 ```
 
 ## 使用方法
@@ -50,6 +52,8 @@ python image_converter_gui.py
 #### GUI版の使い方
 1. **変換モード**を選択（単一ファイル／バッチ変換）
 2. **入力**欄で変換元ファイル/フォルダを指定
+   - **ファイル選択**: 「参照」ボタンをクリックして選択
+   - **ドラッグ&ドロップ**: ドロップエリアに画像ファイルを直接ドラッグ&ドロップ
 3. **出力**欄で保存先を指定
 4. **変換オプション**を設定：
    - 出力形式: JPEG, PNG, BMP, GIF, TIFF, WebP
@@ -129,6 +133,12 @@ python image_converter.py photos/ thumbnails/ --batch --format JPEG --resize 200
 
 ## 特徴
 
+### ドラッグ&ドロップ機能
+- **直感的な操作**: 画像ファイルを直接ドロップエリアにドラッグ&ドロップ
+- **視覚的フィードバック**: ドラッグ中に色とボーダーが変化
+- **自動ファイル検証**: サポートされている画像形式のみ受け入れ
+- **モード対応**: 単一ファイル・バッチ変換の両方で利用可能
+
 ### 画像処理機能
 - **EXIF自動回転**: 撮影時の向き情報に基づく自動回転
 - **透明度処理**: PNG → JPEG変換時の白背景合成
@@ -150,15 +160,20 @@ python image_converter.py photos/ thumbnails/ --batch --format JPEG --resize 200
 
 2. **「Pillowがインストールされていません」エラー**
    ```bash
-   pip install Pillow
+   pip install Pillow tkinterdnd2
    ```
 
-3. **「ファイルが開けません」エラー**
+3. **「ドラッグ&ドロップ機能は利用できません」メッセージ**
+   ```bash
+   pip install tkinterdnd2
+   ```
+
+4. **「ファイルが開けません」エラー**
    - ファイルパスが正しいか確認
    - ファイルが使用中でないか確認
    - 対応形式かどうか確認
 
-4. **GUI版が起動しない**
+5. **GUI版が起動しない**
    - tkinterがインストールされているか確認（通常はPythonに同梱）
    - コマンドライン版を試してみる
 
@@ -177,3 +192,7 @@ python image_converter.py photos/ thumbnails/ --batch --format JPEG --resize 200
   - 主要画像形式に対応
   - バッチ変換機能
   - リサイズ機能
+- v1.1.0 (2024) - ドラッグ&ドロップ機能追加
+  - 画像ファイルのドラッグ&ドロップ変換
+  - 視覚的フィードバック
+  - 自動ファイル形式検証
